@@ -1,0 +1,150 @@
+# Kodi Media Center language file
+# Addon Name: 飞牛影视
+# Addon id: plugin.video.fnmedia
+# Addon Provider: fntv-kodi
+msgid ""
+msgstr ""
+"Project-Id-Version: Kodi Addons\n"
+"Language: zh_CN\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgctxt "#30001"
+msgid "Connection"
+msgstr "连接"
+
+msgctxt "#30002"
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgctxt "#30003"
+msgid "fnOS IP or hostname, optionally with port. e.g. 192.168.1.10 or nas.example.com:8099. Full URL starting with http(s):// is also accepted."
+msgstr "fnOS 的 IP 或主机名，可带端口，如 192.168.1.10 或 nas.example.com:8099，也接受以 http(s):// 开头的完整地址。"
+
+msgctxt "#30004"
+msgid "Use HTTPS"
+msgstr "使用 HTTPS"
+
+msgctxt "#30005"
+msgid "Enable when the NAS serves HTTPS"
+msgstr "NAS 使用 HTTPS 时开启"
+
+msgctxt "#30006"
+msgid "Username"
+msgstr "用户名"
+
+msgctxt "#30007"
+msgid "fnOS login username"
+msgstr "fnOS 登录用户名"
+
+msgctxt "#30008"
+msgid "Password"
+msgstr "密码"
+
+msgctxt "#30009"
+msgid "fnOS login password"
+msgstr "fnOS 登录密码"
+
+msgctxt "#30010"
+msgid "Verify Server Certificate"
+msgstr "校验服务器证书"
+
+msgctxt "#30011"
+msgid "Disable for self-signed NAS certificates"
+msgstr "使用自签名证书时关闭"
+
+msgctxt "#30012"
+msgid "Playback"
+msgstr "播放"
+
+msgctxt "#30013"
+msgid "Cloud Direct Link Fallback"
+msgstr "云盘直链回退"
+
+msgctxt "#30014"
+msgid "Resolve cloud drive (115/189/Quark/Ali) direct links when NAS direct streaming fails. The NAS must resolve links server-side, which triggers a short server-side scan."
+msgstr "NAS 直连播放失败时，解析云盘（115/189/夸克/阿里）直链。需要 NAS 在服务端解析链接，会触发一次短暂的服务端扫描。"
+
+msgctxt "#30015"
+msgid "Sort Order"
+msgstr "排序方式"
+
+msgctxt "#30016"
+msgid "Title A-Z"
+msgstr "标题 A-Z"
+
+msgctxt "#30017"
+msgid "Title Z-A"
+msgstr "标题 Z-A"
+
+msgctxt "#30018"
+msgid "Advanced"
+msgstr "高级"
+
+msgctxt "#30019"
+msgid "Root GUID (optional)"
+msgstr "根目录 GUID（可选）"
+
+msgctxt "#30020"
+msgid "Leave empty normally. Fill only if the library menu does not list anything, using the GUID from the web UI URL."
+msgstr "通常留空。仅当媒体库菜单列不出任何内容时，才填入网页版地址栏中的 GUID。"
+
+msgctxt "#30021"
+msgid "Local Proxy Port"
+msgstr "本地代理端口"
+
+msgctxt "#30022"
+msgid "Port used by the built-in streaming proxy"
+msgstr "内置流媒体代理使用的端口"
+
+msgctxt "#30023"
+msgid "Access Token (auto)"
+msgstr "访问令牌（自动）"
+
+msgctxt "#30024"
+msgid "Saved automatically after login. No manual input needed."
+msgstr "登录后自动保存，无需手动填写。"
+
+msgctxt "#30025"
+msgid "VFS Addon Scheme (ISO direct)"
+msgstr "VFS 插件 scheme（ISO 直链）"
+
+msgctxt "#30026"
+msgid "URL scheme of a VFS addon used to stream ISO/BDMV from cloud direct links, e.g. myvfs. Leave empty (default) to keep ISO on the local proxy. The VFS addon must inject the request headers from the descriptor and limit per-link concurrency itself."
+msgstr "用于 ISO/BDMV 网盘直链取流的 VFS 插件 URL scheme，如 myvfs。留空（默认）时 ISO 走本地代理。VFS 插件需按描述符注入请求头，并自行限制每链接并发数。"
+
+msgctxt "#30027"
+msgid "Items per Page (0 = Whole Library)"
+msgstr "每页条数（0 = 整库直出）"
+
+msgctxt "#30028"
+msgid "0 (default) renders the whole library as one poster wall with no paging. Set a value to fall back to paged lists with a next-page entry."
+msgstr "0（默认）把整个库渲染为一面完整的海报墙，无任何翻页操作；设置数值后回退为分页列表（列表尾部出现\"下一页\"）。低端设备可适当调小。"
+
+msgctxt "#30029"
+msgid "Ask Version Before Playing Multi-Version Items"
+msgstr "播放有多个版本的电影时先弹出选版本对话框（取消则播默认版本）。冷文件等待版本列表最多 3 秒，超时按默认版本直接起播。"
+
+msgctxt "#30030"
+msgid "When starting a movie that has multiple versions, show a version selection dialog (cancel plays the default). Cold files wait up to 3 seconds for the version list, then start the default."
+msgstr "When starting a movie that has multiple versions, show a version selection dialog (cancel plays the default). Cold files wait up to 3 seconds for the version list, then start the default."
+
+msgctxt "#30031"
+msgid "Direct-link Min Validity (min)"
+msgstr "直链最小剩余有效期（分钟）"
+
+msgctxt "#30032"
+msgid "Minimum remaining validity for a cloud direct link to be used (115 now issues ~40-min links; the old fixed 1h+ gate sent everything to proxy). 0 disables the gate - links may expire mid-play, restarting playback re-resolves."
+msgstr "网盘直链剩余有效期达到该分钟数才走直链（115 现签发的直链有效期仅约 40 分钟，旧版固定 1 小时门控会把直链全部拦去代理）。0 = 不做门控；直链中途过期播放会卡住，重新播放即可重新解析。"
+
+msgctxt "#30033"
+msgid "Library Sync"
+msgstr "媒体库同步"
+
+msgctxt "#30034"
+msgid "Native Library Sync"
+msgstr "原生媒体库同步"
+
+msgctxt "#30035"
+msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
+msgstr "把飞牛影视的影片/剧集同步进 Kodi 原生媒体库（strm 在播放时实时解析链接，天然免疫 115 直链过期）。开机后运行一次，之后每 12 小时自动刷新。"

@@ -1,0 +1,150 @@
+# Kodi Media Center language file
+# Addon Name: 飞牛影视
+# Addon id: plugin.video.fnmedia
+# Addon Provider: fntv-kodi
+msgid ""
+msgstr ""
+"Project-Id-Version: Kodi Addons\n"
+"Language: en_GB\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgctxt "#30001"
+msgid "Connection"
+msgstr "Connection"
+
+msgctxt "#30002"
+msgid "Server Address"
+msgstr "Server Address"
+
+msgctxt "#30003"
+msgid "fnOS IP or hostname, optionally with port. e.g. 192.168.1.10 or nas.example.com:8099. Full URL starting with http(s):// is also accepted."
+msgstr "fnOS IP or hostname, optionally with port. e.g. 192.168.1.10 or nas.example.com:8099. Full URL starting with http(s):// is also accepted."
+
+msgctxt "#30004"
+msgid "Use HTTPS"
+msgstr "Use HTTPS"
+
+msgctxt "#30005"
+msgid "Enable when the NAS serves HTTPS"
+msgstr "Enable when the NAS serves HTTPS"
+
+msgctxt "#30006"
+msgid "Username"
+msgstr "Username"
+
+msgctxt "#30007"
+msgid "fnOS login username"
+msgstr "fnOS login username"
+
+msgctxt "#30008"
+msgid "Password"
+msgstr "Password"
+
+msgctxt "#30009"
+msgid "fnOS login password"
+msgstr "fnOS login password"
+
+msgctxt "#30010"
+msgid "Verify Server Certificate"
+msgstr "Verify Server Certificate"
+
+msgctxt "#30011"
+msgid "Disable for self-signed NAS certificates"
+msgstr "Disable for self-signed NAS certificates"
+
+msgctxt "#30012"
+msgid "Playback"
+msgstr "Playback"
+
+msgctxt "#30013"
+msgid "Cloud Direct Link Fallback"
+msgstr "Cloud Direct Link Fallback"
+
+msgctxt "#30014"
+msgid "Resolve cloud drive (115/189/Quark/Ali) direct links when NAS direct streaming fails. The NAS must resolve links server-side, which triggers a short server-side scan."
+msgstr "Resolve cloud drive (115/189/Quark/Ali) direct links when NAS direct streaming fails. The NAS must resolve links server-side, which triggers a short server-side scan."
+
+msgctxt "#30015"
+msgid "Sort Order"
+msgstr "Sort Order"
+
+msgctxt "#30016"
+msgid "Title A-Z"
+msgstr "Title A-Z"
+
+msgctxt "#30017"
+msgid "Title Z-A"
+msgstr "Title Z-A"
+
+msgctxt "#30018"
+msgid "Advanced"
+msgstr "Advanced"
+
+msgctxt "#30019"
+msgid "Root GUID (optional)"
+msgstr "Root GUID (optional)"
+
+msgctxt "#30020"
+msgid "Leave empty normally. Fill only if the library menu does not list anything, using the GUID from the web UI URL."
+msgstr "Leave empty normally. Fill only if the library menu does not list anything, using the GUID from the web UI URL."
+
+msgctxt "#30021"
+msgid "Local Proxy Port"
+msgstr "Local Proxy Port"
+
+msgctxt "#30022"
+msgid "Port used by the built-in streaming proxy"
+msgstr "Port used by the built-in streaming proxy"
+
+msgctxt "#30023"
+msgid "Access Token (auto)"
+msgstr "Access Token (auto)"
+
+msgctxt "#30024"
+msgid "Saved automatically after login. No manual input needed."
+msgstr "Saved automatically after login. No manual input needed."
+
+msgctxt "#30025"
+msgid "VFS Addon Scheme (ISO direct)"
+msgstr "VFS Addon Scheme (ISO direct)"
+
+msgctxt "#30026"
+msgid "URL scheme of a VFS addon used to stream ISO/BDMV from cloud direct links, e.g. myvfs. Leave empty (default) to keep ISO on the local proxy. The VFS addon must inject the request headers from the descriptor and limit per-link concurrency itself."
+msgstr "URL scheme of a VFS addon used to stream ISO/BDMV from cloud direct links, e.g. myvfs. Leave empty (default) to keep ISO on the local proxy. The VFS addon must inject the request headers from the descriptor and limit per-link concurrency itself."
+
+msgctxt "#30027"
+msgid "Items per Page (0 = Whole Library)"
+msgstr "Items per Page (0 = Whole Library)"
+
+msgctxt "#30028"
+msgid "0 (default) renders the whole library as one poster wall with no paging. Set a value to fall back to paged lists with a next-page entry."
+msgstr "0 (default) renders the whole library as one poster wall with no paging. Set a value to fall back to paged lists with a next-page entry."
+
+msgctxt "#30029"
+msgid "Ask Version Before Playing Multi-Version Items"
+msgstr "Ask Version Before Playing Multi-Version Items"
+
+msgctxt "#30030"
+msgid "When starting a movie that has multiple versions, show a version selection dialog (cancel plays the default). Cold files wait up to 3 seconds for the version list, then start the default."
+msgstr "When starting a movie that has multiple versions, show a version selection dialog (cancel plays the default). Cold files wait up to 3 seconds for the version list, then start the default."
+
+msgctxt "#30031"
+msgid "Direct-link Min Validity (min)"
+msgstr "Direct-link Min Validity (min)"
+
+msgctxt "#30032"
+msgid "Minimum remaining validity for a cloud direct link to be used (115 now issues ~40-min links; the old fixed 1h+ gate sent everything to proxy). 0 disables the gate - links may expire mid-play, restarting playback re-resolves."
+msgstr "Minimum remaining validity for a cloud direct link to be used (115 now issues ~40-min links; the old fixed 1h+ gate sent everything to proxy). 0 disables the gate - links may expire mid-play, restarting playback re-resolves."
+
+msgctxt "#30033"
+msgid "Library Sync"
+msgstr "Library Sync"
+
+msgctxt "#30034"
+msgid "Native Library Sync"
+msgstr "Native Library Sync"
+
+msgctxt "#30035"
+msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
+msgstr "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
