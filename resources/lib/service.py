@@ -7,6 +7,7 @@
 """
 import os
 import sys
+import time
 
 # Kodi 以本文件为入口启动时，sys.path 只有 resources/lib，
 # 需要把插件根目录加进来才能 import resources.*
@@ -38,6 +39,7 @@ class FnPlayer(xbmc.Player):
         self.pending = None        # 当前待上报的播放信息
         self.ours_playing = False  # 是否确认是本插件的流在播放
         self.last_time = 0         # 播放期间周期缓存的进度（停止后 getTime 会抛异常）
+        self.last_stop_ts = 0      # 上次播放停止的时间戳（后台任务避开停播窗口）
         self._resume_seeked = False  # 本曲是否已自动续播 seek（避免重复）
 
     def _file_url(self):
@@ -103,10 +105,12 @@ class FnPlayer(xbmc.Player):
 
     def onPlayBackStopped(self):
         self._resume_seeked = False
+        self.last_stop_ts = time.time()
         self._report()
 
     def onPlayBackEnded(self):
         self._resume_seeked = False
+        self.last_stop_ts = time.time()
         self._report()
 
     def _report(self):
@@ -189,6 +193,10 @@ def _enrich_loop(monitor):
             cooldown = 4
 
 
+PLAY_STOP_COOLDOWN = 150  # 播放刚停的冷却：让 Kodi 先写观看状态/刷新列表，不抢 I/O
+HEAVY_IDLE_S = 300        # 重活（版本扫描/分类索引/媒体库同步）需距上次播放停止 ≥ 5 分钟
+
+
 def _prewarm_loop(monitor, player):
     """常驻整库预热：把各媒体库与"全部电影/全部剧集"范围的描述符缓存建好。
 
@@ -196,11 +204,26 @@ def _prewarm_loop(monitor, player):
     即零网络零解析，只剩 ListItem 构造。开机后台逐库构建（一次 walk 实测
     ~2s），用户进插件时通常已命中——一面墙即整库、无翻页项、零等待。
     播放中让路；desc.prewarm_one 每次只建一个范围，天然错峰不打突刺。
+    播放结束后进入冷却（PLAY_STOP_COOLDOWN）：此前的实现里播放期间
+    让路的全部积压任务会在停播瞬间集中释放，恰好压住 Kodi 退回列表时的
+    观看状态写入与容器刷新；版本扫描/媒体库同步等重活另要求距停播
+    ≥ HEAVY_IDLE_S。
     """
     from resources.lib import desc, meta, libsync
+    was_playing = False
+    cooldown_until = 0
     while not monitor.waitForAbort(20):
         try:
             if player.isPlaying():
+                was_playing = True
+                continue
+            if was_playing:
+                was_playing = False
+                cooldown_until = time.time() + PLAY_STOP_COOLDOWN
+                util.log('播放结束，后台任务冷却 %ds（避开刷列表窗口）'
+                         % PLAY_STOP_COOLDOWN, xbmc.LOGDEBUG)
+                continue
+            if time.time() < cooldown_until:
                 continue
             client = util.ensure_client()
             if client.on_token_refresh is None:
@@ -211,6 +234,8 @@ def _prewarm_loop(monitor, player):
             if done:
                 util.log('整库预热完成: %s' % done)
                 continue
+            if time.time() - player.last_stop_ts < HEAVY_IDLE_S:
+                continue   # 重活等空闲窗口（last_stop_ts=0 的开机场景不受限）
             # 描述符就绪后补扫版本数（多版本"〔N版本〕"标记的数据源）
             progress = desc.scan_versions_chunk(client)
             if progress:

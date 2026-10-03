@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.fnmedia" version="0.7.2" name="飞牛影视" provider-name="fntv-kodi">
+<addon id="plugin.video.fnmedia" version="0.7.4" name="飞牛影视" provider-name="fntv-kodi">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
@@ -14,7 +14,8 @@
         <platform>all</platform>
         <language>zh_CN</language>
         <license>GPL-3.0-only</license>
-        <news>v0.7.2 演员头像本地化：信息页/播放页/媒体库 NFO 的演员头像此前仍经本地代理实时抓取 NAS（首次显示必现）。现同步时预下载每部影片前 12 位主演的头像为本地文件（md5 键名、增量跳过、并行下载），build_cast 与 NFO 均本地优先、未下载项回退代理 URL 由后续同步补齐。首轮全量下载约 1.5 万张（22 分钟），此后增量仅新增条目。
+        <news>v0.7.4 媒体库同步进度显示：同步全程在 Kodi 右下角显示角标进度（DialogProgressBG，不打断操作）——收集清单 → 获取剧集结构 → 写入文件（逐部电影/逐集）→ 下载图片（实时张数）→ 登记扫库 五个阶段；_download_art 改为按完成回调并统计真实成功下载数（此前统计的是任务数）。⑦海报/背景/clearlogo/剧照与演员头像同样的 webp 内容 .jpg 后缀问题（真机实测墙视图加载失败 `Load of ...poster.jpg failed`）：webp 内容一律 .webp 命名（只改后缀、图片内容零改动，旧文件自动迁移），NFO 引用与 MyVideos art 表 URL 同步对齐；图片下载直连优先（带 Authx 签名省本机代理一跳）、并发 6→12；集编号按 guid 锁定首次分配值（服务端跨轮编号漂移导致 Kodi 重复集，实测 1033 条）。v0.7.3 媒体库多处体验修复：①原生库信息页演员头像缺图，两层根因——(a) Kodi 重扫对演员头像 art 只补缺不覆盖，0.7.0/0.7.1 导入的必失败服务器 URL 记录滞留；(b) 服务端图片源文件是 webp 而按 .jpg 落盘，Kodi 图片加载按扩展名选 mjpeg 解码器解 webp 数据必失败（真机 21.3 实测，海报走内容嗅探路径幸免）。修复：同步时直写 MyVideos DB 把演员头像 art 记录/art_urls 与本地路径对齐（幂等，兼容 Kodi 19 actors 表与 20/21 actor 表+art_urls 列，单轮实测修复 4.1 万条）；演员头像改 .webp 命名（只改后缀、图片内容零改动，旧文件自动迁移）；头像预下载范围 12→40 位与 NFO 演员上限对齐。②播放退出返回列表卡顿——播放期间让路的后台任务（整库预热/版本扫描/12h 同步）在停播瞬间集中释放抢 I/O，且 _set_content_db 与 Kodi 写观看状态互等 sqlite 锁（原 timeout 15s）；现播放结束后冷却 150s、重活距停播 ≥5 分钟、DB 写 timeout 降 3s 失败即弃。③修复 0.7.x _set_content_db 函数签名错配：tvshows 根被写成 movies、path 表留下 'movies'/'tvshows' 字面量垃圾行，strPath 补尾斜杠（缺失时扫库器路径匹配失败整库不入库）。④扫库触发改 JSON-RPC TCP 9090 优先（service 上下文可靠，不依赖用户进插件目录；实测 Scan 目录参数必须带尾斜杠否则 1ms 空跑），executebuiltin + scan_pending 兜底；Clean 实测 21.3 的 JSON-RPC 会弹确认框阻塞、displayDialog 参数被拒，故只走 executebuiltin 并保留 clean_pending 兜底。⑤修复单集剧照下载任务元组错位（4 元组传入 _download_art 的 3 元组解包，有剧照时中断整个图片下载与同步收尾）。⑥修复剧集剧照全部缺失：episode/list 接口无 still_path 字段（剧照在 poster 字段，1920x1080），下载任务从未生成；服务端图片按需生成、首次请求 404（冷启动），_download_art 增加失败重试（3 次、间隔 3s）。
+v0.7.2 演员头像本地化：信息页/播放页/媒体库 NFO 的演员头像此前仍经本地代理实时抓取 NAS（首次显示必现）。现同步时预下载每部影片前 12 位主演的头像为本地文件（md5 键名、增量跳过、并行下载），build_cast 与 NFO 均本地优先、未下载项回退代理 URL 由后续同步补齐。首轮全量下载约 1.5 万张（22 分钟），此后增量仅新增条目。
 v0.7.1 原生媒体库同步补全图片素材：海报/背景图/清晰标志/单集剧照在同步时经本地代理下载为本地文件（并行 6 线程、增量跳过已有），NFO 引用本地路径——此前 NFO 内嵌的是服务器 sys/img 原始 URL（需 Authx 签名，Kodi 直接抓取必失败），导致原生库没有图片。实测 1264 部电影+73 部剧的 3763 张素材落地，NFO 含中文流派/演员/本地图片路径，扫库零联网。另修复 service 上下文 Content.SetContent 不生效（改直写 MyVideos DB path 表）与扫库内建不可靠（scan_pending 标记 + 用户进入插件根目录时在 GUI 上下文补触发）。
 v0.7.0 原生媒体库同步（新分类"媒体库同步"，默认开）：把飞牛影视的影片/剧集以 strm+nfo 同步进 Kodi 原生视频库——主界面媒体库分类、"最近添加/正在观看"小部件、统一观看状态全部可用。关键设计：strm 指向本插件（播放时实时换链），天然免疫 115 直链 40 分钟过期的限制（Jellyfin 直连模式做不到）。增量幂等：内容无变化不重写，消失条目自动清理；剧集结构为 剧/Season N/SxxEyy，季集数据带 24h 读缓存温和限速；NFO 含中文流派/演员/评分/剧情/唯一 ID，并修复同步场景详情分片被 12h TTL 误判缺失的问题（流派演员是静态数据，同步读取不受 TTL 限制）。开机跑一次，之后每 12 小时自动刷新。
 v0.6.4 插件图标更换为飞牛影视官方图标（来自 fntv-electron 客户端资源，256×256）。

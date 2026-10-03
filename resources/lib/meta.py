@@ -381,21 +381,28 @@ def _person_order(p):
 ACTOR_ART_DIR = os.path.join('art', 'actors')
 
 
-def actor_thumb_path(profile_path):
-    """演员头像本地路径（md5(profile_path) 命名，确定性）"""
+def actor_thumb_path(profile_path, ext='.webp'):
+    """演员头像本地路径（md5(profile_path) 命名，确定性）。
+
+    0.7.4 起默认 .webp：服务端图片源文件即 webp，扩展名必须与内容一致，
+    否则 Kodi 图片加载按扩展名选 mjpeg 解码器必失败（真机 21.3 实测
+    原生库信息页演员头像全剪影）。"""
     if not profile_path:
         return None
     key = hashlib.md5(profile_path.encode('utf-8')).hexdigest()[:16]
-    return os.path.join(util.addon_data_dir(), ACTOR_ART_DIR, key + '.jpg')
+    return os.path.join(util.addon_data_dir(), ACTOR_ART_DIR, key + ext)
 
 
 def local_actor_thumb(profile_path):
-    """已下载的演员头像本地路径；未下载返回 None"""
-    p = actor_thumb_path(profile_path)
-    try:
-        return p if os.path.isfile(p) and os.path.getsize(p) > 512 else None
-    except OSError:
-        return None
+    """已下载的演员头像本地路径；未下载返回 None（兼容 .webp 与旧 .jpg）"""
+    for p in (actor_thumb_path(profile_path),
+              actor_thumb_path(profile_path, '.jpg')):
+        try:
+            if p and os.path.isfile(p) and os.path.getsize(p) > 512:
+                return p
+        except OSError:
+            continue
+    return None
 
 
 def build_cast(client, persons, limit=40):
