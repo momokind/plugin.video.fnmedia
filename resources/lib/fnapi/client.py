@@ -18,6 +18,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+import xbmc
+
 from resources.lib import util
 from resources.lib.fnapi.auth import gen_authx, dumps_compact, generate_nonce, string_to_uuid
 
@@ -431,6 +433,13 @@ class FnClient(object):
         """
         if not poster_path:
             return None
+        if isinstance(poster_path, (list, tuple)):
+            # mediadb 层 posters 是列表（调用方取 [0]），详情层的 backdrops/
+            # logos 等字段也存在列表误传的可能：统一取首项，避免
+            # str(list) 拼出必败 URL 还每轮重试
+            poster_path = poster_path[0] if poster_path else None
+            if not poster_path:
+                return None
         poster_path = str(poster_path)
         if poster_path.startswith('http'):
             return poster_path

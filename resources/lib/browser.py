@@ -222,16 +222,42 @@ def root(handle):
                   _static_item('分类浏览', 'DefaultGenre.png'), True))
     items.append((plugin_url({'action': 'search'}),
                   _static_item('搜索', 'DefaultAddonsSearch.png'), True))
+    # 媒体库同步状态行（配置后才显示）：最近一次同步概况，点击请求
+    # 立即同步（service 常驻循环消费，插队于版本扫描等重活之前执行）
+    try:
+        from resources.lib import libsync
+        sync_label, sync_stamp_ = libsync.sync_status_label()
+        if sync_label:
+            items.append((plugin_url({'action': 'sync', 'st': sync_stamp_, 'dv': stamp}),
+                          _static_item(sync_label, 'DefaultAddonService.png'), True))
+    except Exception as e:
+        util.log('同步状态行构建失败: %s' % e, xbmc.LOGWARNING)
     items.append((plugin_url({'action': 'relogin'}),
                   _static_item('重新登录（刷新令牌）', 'DefaultUser.png'), True))
 
     _end(handle, items, content='files', title='飞牛影视')
-    # 媒体库同步的扫库在 service 上下文可能不生效，进入根目录时补触发
+    # 媒体库同步的扫库在 service 上下文可能不生效，进入根目录时补触发；
+    # 首次配置/切换服务器后自动登记一次立即同步请求（service 秒级消费）
     try:
         from resources.lib import libsync
         libsync.run_pending_scan()
+        libsync.maybe_request_first_sync()
     except Exception as e:
         util.log('媒体库扫库触发失败: %s' % e, xbmc.LOGWARNING)
+
+
+def sync_action(handle, params):
+    """状态行点击：登记立即同步请求并刷新根菜单。
+
+    重活由 service 常驻循环执行（invoker 内跑会拖住 Kodi 插件进程，
+    首轮 40k 图片下载可长达数十分钟）；请求在描述符就绪后插队消费。"""
+    from resources.lib import libsync
+    if util.get_setting('libsync', 'true') != 'true':
+        util.notify('媒体库同步已在设置中停用')
+    else:
+        libsync.request_sync()
+        util.notify('已请求同步，即将在后台执行（右下角显示进度）')
+    root(handle)
 
 
 # ---------------------------------------------------------------------- 库/类型视图（整库直出）

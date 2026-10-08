@@ -146,5 +146,25 @@ msgid "Native Library Sync"
 msgstr "原生媒体库同步"
 
 msgctxt "#30035"
-msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
-msgstr "把飞牛影视的影片/剧集同步进 Kodi 原生媒体库（strm 在播放时实时解析链接，天然免疫 115 直链过期）。开机后运行一次，之后每 12 小时自动刷新。"
+msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs after first configuration and then every sync interval."
+msgstr "把飞牛影视的影片/剧集同步进 Kodi 原生媒体库（strm 在播放时实时解析链接，天然免疫 115 直链过期）。首次配置后自动同步一次，之后按同步周期自动刷新；插件主菜单有同步状态行，可点击立即同步。"
+
+msgctxt "#30036"
+msgid "Sync Interval"
+msgstr "同步周期"
+
+msgctxt "#30037"
+msgid "How often the native library sync refreshes automatically. Manual sync from the plugin main menu is always available."
+msgstr "原生媒体库同步的自动刷新周期。插件主菜单的同步状态行可随时手动立即同步。"
+
+msgctxt "#30038"
+msgid "Every 6 hours"
+msgstr "每 6 小时"
+
+msgctxt "#30039"
+msgid "Every 12 hours"
+msgstr "每 12 小时"
+
+msgctxt "#30040"
+msgid "Every 24 hours"
+msgstr "每 24 小时"

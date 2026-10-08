@@ -9,6 +9,7 @@
   ?action=watched&guid=xxx                             标记为已观看
   ?action=manual                                       手动输入 GUID 浏览
   ?action=relogin                                      重新登录
+  ?action=sync                                         请求立即媒体库同步
 """
 import sys
 from urllib.parse import parse_qs
@@ -45,6 +46,8 @@ def router():
         player.mark_watched(params)
     elif action == 'relogin':
         player.relogin()
+    elif action == 'sync':
+        browser.sync_action(handle, params)
     elif action == 'filter':
         browser.filter_list(handle, params)
     elif action == 'tv':

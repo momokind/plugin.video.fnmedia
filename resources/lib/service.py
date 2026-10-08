@@ -234,6 +234,15 @@ def _prewarm_loop(monitor, player):
             if done:
                 util.log('整库预热完成: %s' % done)
                 continue
+            # 立即同步请求（首次配置后自动 / 状态行手动点击）：描述符就绪后
+            # 插队执行——先于版本扫描与停播 5 分钟重活门控（用户点名的）。
+            # 播放中与停播 150s 冷却让路已在上方保证，此处无需再等。
+            if libsync.pop_sync_request():
+                util.log('收到同步请求，立即执行媒体库同步')
+                status = libsync.sync_library(client, force=True)
+                if status not in ('fresh', 'disabled'):
+                    util.log('媒体库同步: %s' % status)
+                continue
             if time.time() - player.last_stop_ts < HEAVY_IDLE_S:
                 continue   # 重活等空闲窗口（last_stop_ts=0 的开机场景不受限）
             # 描述符就绪后补扫版本数（多版本"〔N版本〕"标记的数据源）

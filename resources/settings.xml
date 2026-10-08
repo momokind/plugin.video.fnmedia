@@ -149,6 +149,20 @@
                     <default>true</default>
                     <control type="toggle" />
                 </setting>
+                <setting id="libsync_interval" type="integer" label="30036" help="30037">
+                    <level>0</level>
+                    <default>12</default>
+                    <constraints>
+                        <options>
+                            <option label="30038">6</option>
+                            <option label="30039">12</option>
+                            <option label="30040">24</option>
+                        </options>
+                    </constraints>
+                    <control type="list" format="integer">
+                        <heading>30036</heading>
+                    </control>
+                </setting>
             </group>
         </category>
     </section>

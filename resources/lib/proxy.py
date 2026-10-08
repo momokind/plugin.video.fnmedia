@@ -272,15 +272,31 @@ def set_client(client):
 
 
 def get_client():
-    """取当前客户端；若设置里的令牌已更新则同步（复用的旧代理进程可能持过期 token）"""
-    if _client is not None:
+    """取当前客户端；设置里的令牌/服务器变化时同步到当前对象。
+
+    兜底（真机 0.7.x 日志实证的播放全败根因）：代理可能由 service 进程
+    先拉起（libsync 图片下载/演员头像回退 URL 等路径会调 image_url），
+    而 set_client 只在插件 invoker 进程调用——service 的代理拿不到客户
+    端，/stream 与 /image 一律 500 'client not ready' 且零日志，重新登
+    录也无效。未设置时按设置构建：ensure_client 是进程内单例，service
+    各常驻循环的 API 调用会自动重登并把新令牌写回设置，此处同步即可。"""
+    global _client
+    if _client is None:
         try:
-            token = util.get_setting('token', '')
-            if token and token != _client.token:
-                _client.token = token
-                _client._token_checked = True
-        except Exception:
-            pass
+            _client = util.ensure_client()
+        except Exception as e:
+            util.log('代理客户端构建失败: %s' % e, xbmc.LOGWARNING)
+            return None
+    try:
+        token = util.get_setting('token', '')
+        if token and token != _client.token:
+            _client.token = token
+            _client._token_checked = True
+        base = util.base_url()
+        if base and base != _client.base:
+            _client.base = base    # 用户改了服务器地址：原地同步
+    except Exception:
+        pass
     return _client
 
 
@@ -620,6 +636,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _proxy_stream(self, media_guid, send_body, filename=''):
         client = get_client()
         if client is None:
+            util.log('代理无可用客户端，/stream 500（设置未配置或构建失败）',
+                     xbmc.LOGWARNING)
             self._send_upstream_error(500, 'client not ready')
             return
 
@@ -635,6 +653,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 target_url, headers, err, is_cloud = self._resolve_stream(
                     media_guid, prefer_cloud=tried_cloud)
                 if err:
+                    util.log('流解析失败: %s（media=%s）' % (err, media_guid[:16]),
+                             xbmc.LOGWARNING)
                     self._send_upstream_error(500, err)
                     return
 
@@ -778,6 +798,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _proxy_image(self, url, send_body):
         client = get_client()
         if client is None:
+            util.log('代理无可用客户端，/image 500（设置未配置或构建失败）',
+                     xbmc.LOGWARNING)
             self._send_upstream_error(500, 'client not ready')
             return
         headers = {'Cookie': 'mode=relay'}

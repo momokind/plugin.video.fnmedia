@@ -146,5 +146,25 @@ msgid "Native Library Sync"
 msgstr "Native Library Sync"
 
 msgctxt "#30035"
-msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
-msgstr "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs at startup and every 12 hours."
+msgid "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs after first configuration and then every sync interval."
+msgstr "Sync the FeiNiu library into Kodi's native video library ( strm files resolve links at play time, immune to expiring 115 links). Runs after first configuration and then every sync interval."
+
+msgctxt "#30036"
+msgid "Sync Interval"
+msgstr "Sync Interval"
+
+msgctxt "#30037"
+msgid "How often the native library sync refreshes automatically. Manual sync from the plugin main menu is always available."
+msgstr "How often the native library sync refreshes automatically. Manual sync from the plugin main menu is always available."
+
+msgctxt "#30038"
+msgid "Every 6 hours"
+msgstr "Every 6 hours"
+
+msgctxt "#30039"
+msgid "Every 12 hours"
+msgstr "Every 12 hours"
+
+msgctxt "#30040"
+msgid "Every 24 hours"
+msgstr "Every 24 hours"
