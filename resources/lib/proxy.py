@@ -27,7 +27,7 @@ from urllib.parse import urlparse, parse_qs, unquote, quote
 
 import xbmc
 
-from resources.lib import util
+from resources.lib import util, sniff
 
 _server = None
 _server_lock = threading.Lock()
@@ -749,6 +749,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 guessed = _guess_mime(filename)
                 if guessed:
                     out_headers['Content-Type'] = guessed
+            # 镜像命名的条目上游却自述 mp2t = mediasrv 转换流（真机实测 NAS 对
+            # iso/BDMV 一律如此，见 sniff.py 头注）。记入嗅探缓存：起播前嗅探
+            # 超时首播失败的用户，重播一次即按 TS 流出 URL 自愈。
+            if filename and sniff.is_disc_image_name(filename) and ctype == 'video/mp2t':
+                sniff.remember(media_guid, sniff.KIND_TS)
             for name, value in out_headers.items():
                 self.send_header(name, value)
             if not (resp.headers and resp.headers.get('Content-Length')):

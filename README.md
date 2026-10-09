@@ -122,6 +122,23 @@ grep FNMedia ~/.kodi/temp/kodi.log
 
 ## 版本历史
 
+- 0.7.11 修复 NAS 本地 ISO 原盘播放失败（真机日志 "Error opening
+  image file"）：Kodi 对 .iso 先用 udf:// 探测镜像内 BDMV/index.bdmv
+  （成功才走 libbluray），失败回落 libdvd 找 VIDEO_TS.IFO——两路全败
+  的根因不在 Kodi 也不在代理：fnOS mediasrv 的 media/range 对本地
+  iso/BDMV 不返回镜像原始字节，而是返回抽取的正片 M2TS 流
+  （Content-Type: video/mp2t、192 字节包对齐、PMT 含 HDMV/AC-3/DTS1
+  描述符），却仍用 Content-Range/File-Size 伪装成原文件的字节区间；
+  直连 NAS 绕过代理与 FastVFS 实测字节逐一致，普通 mkv 则原样透传真
+  实字节（octet-stream、offset0 为 EBML 魔数）。修复：起播前对镜像命
+  名（.iso/.img）条目做一次 8KB 字节嗅探（读 sector 16 起的卷识别区：
+  UDF 的 BEA01/NSR0x/TEA01 或 ISO9660 的 CD001 = 真镜像；上游自述
+  mp2t 或 0x47@188/192 步长同步 = 转换流），结果按 media_guid 落盘缓
+  存（7 天 TTL，同一文件终身一次）；转换流把播放 URL 装饰名 .iso→
+  .ts，Kodi 直接 demux 正片（无菜单导航），真镜像与云盘 guid（media/
+  range 400、云链才是真实字节）维持光盘镜像原路径；代理转发侧顺带记
+  录"镜像命名却自述 mp2t"的条目，起播嗅探超时的首播失败重播一次即
+  自愈
 - 0.7.10 修复"Kodi 电视剧空库"：扫库触发此前对 movies、tvshows 两
   个根各发一次 JSON-RPC Scan，第二次请求撞上第一次扫描进行中会被
   Kodi 静默丢弃（仍返回 OK，但事件流实测只有一次 OnScanStarted）——

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.video.fnmedia" version="0.7.10" name="飞牛影视" provider-name="fntv-kodi">
+<addon id="plugin.video.fnmedia" version="0.7.11" name="飞牛影视" provider-name="fntv-kodi">
     <requires>
         <import addon="xbmc.python" version="3.0.1"/>
     </requires>
@@ -14,7 +14,8 @@
         <platform>all</platform>
         <language>zh_CN</language>
         <license>GPL-3.0-only</license>
-        <news>v0.7.10 修复"Kodi 电视剧空库"：扫库触发此前对 movies、tvshows 两个根各发一次 JSON-RPC Scan，第二次请求撞上第一次扫描进行中会被 Kodi 静默丢弃（仍返回 OK，但事件流实测只有一次 OnScanStarted）——电影先扫正常入库、剧集扫描永远不执行。现改为对共同父目录（library/）发一次 Scan 递归扫完（子目录各自的 path 表内容类型生效），单次请求无撞车可能；内建兜底同步改为父目录。
+        <news>v0.7.11 修复 NAS 本地 ISO 原盘播放失败（真机日志 "Error opening image file"）：Kodi 对 .iso 先用 udf:// 探测镜像内 BDMV/index.bdmv（成功才走 libbluray），失败回落 libdvd 找 VIDEO_TS.IFO——两路全败的根因不在 Kodi 也不在代理：fnOS mediasrv 的 media/range 对本地 iso/BDMV 不返回镜像原始字节，而是返回抽取的正片 M2TS 流（Content-Type: video/mp2t、192 字节包对齐、PMT 含 HDMV/AC-3/DTS1 描述符），却仍用 Content-Range/File-Size 伪装成原文件的字节区间；直连 NAS 绕过代理与 FastVFS 实测字节逐一致，普通 mkv 则原样透传真实字节（octet-stream、offset0 为 EBML 魔数）。修复：起播前对镜像命名（.iso/.img）条目做一次 8KB 字节嗅探（读 sector 16 起的卷识别区：UDF 的 BEA01/NSR0x/TEA01 或 ISO9660 的 CD001 = 真镜像；上游自述 mp2t 或 0x47@188/192 步长同步 = 转换流），结果按 media_guid 落盘缓存（7 天 TTL，同一文件终身一次）；转换流把播放 URL 装饰名 .iso→.ts，Kodi 直接 demux 正片（无菜单导航），真镜像与云盘 guid（media/range 400、云链才是真实字节）维持光盘镜像原路径；代理转发侧顺带记录"镜像命名却自述 mp2t"的条目，起播嗅探超时的首播失败重播一次即自愈。
+v0.7.10 修复"Kodi 电视剧空库"：扫库触发此前对 movies、tvshows 两个根各发一次 JSON-RPC Scan，第二次请求撞上第一次扫描进行中会被 Kodi 静默丢弃（仍返回 OK，但事件流实测只有一次 OnScanStarted）——电影先扫正常入库、剧集扫描永远不执行。现改为对共同父目录（library/）发一次 Scan 递归扫完（子目录各自的 path 表内容类型生效），单次请求无撞车可能；内建兜底同步改为父目录。
 v0.7.9 修复 0.7.7 引入的图片下载让路死锁：暂停/恢复此前由主循环在完成回调里判定，同步期间开始播放后全部下载线程暂停、不再产生完成事件，"播放结束继续"永远无法触发——同步卡死在下载阶段（真机实测进度角标停在 47% 直到重启 Kodi）。现改为每个下载线程独立轮询播放状态，播放结束即自动恢复，不依赖完成回调。
 v0.7.8 修复全新安装首轮同步的两条误导性告警："演员头像重命名迁移失败/图片重命名迁移失败: No such file or directory"——目录尚不存在（本来就没有旧文件可迁移）被当成迁移失败记 WARNING；现改为目录不存在时静默跳过，仅真实迁移错误才告警。
 v0.7.7 播放失败双修复（真机日志定位，一晚 11 次播放全败）：①修复开机后播放全部失败——本地代理可能由 service 进程先拉起（媒体库同步的图片下载/演员头像回退 URL 会调 image_url），而代理客户端只由插件 invoker 进程注入（set_client），service 的代理无客户端，/stream 与 /image 一律 500 'client not ready' 且该路径零日志， Kodi OpenInputStream 报错、海报墙全裂；重新登录无效（只刷新设置里的令牌，不改变代理进程内状态），直到 Kodi 重启且下次由 invoker 先起代理才恢复。修复：proxy.get_client 未设置时按设置兜底构建（ensure_client 进程内单例，令牌/服务器变化原地同步），无客户端 500 路径补 WARNING 日志（此前静默是难排查主因）。②修复直链播放从未生效：client.py 的探测/门控日志引用 xbmc.LOGINFO 但未 import xbmc，探测失败或门控触发即抛 NameError（日志表现"直链解析失败，回退代理: name 'xbmc' is not defined"），直链全部被误回退代理。③首轮同步的图片下载让路播放：播放中暂停下载线程、播完自动续传（12 线程下载与代理同进程的 GIL 争用曾把代理 HEAD/Stat 拖到 20 秒超时，真机日志 Timeout 28）。

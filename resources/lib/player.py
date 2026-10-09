@@ -8,7 +8,7 @@ import xbmc
 import xbmcgui
 import xbmcplugin
 
-from resources.lib import util, proxy
+from resources.lib import util, proxy, sniff
 from resources.lib.browser import plugin_url
 from resources.lib.fnapi.client import ApiError, CLOUD_LINK_CACHE_FILE
 
@@ -367,7 +367,19 @@ def play(handle, params):
     elif cloud_known:
         util.debug('尚无播放端 UA 采样，本次走本地代理（代理将捕获完整 UA，下次起直链）')
     if not url:
-        url = proxy.stream_url(media_guid, file_name or None)
+        # 光盘镜像嗅探（仅本地代理路径；直链/VFS 给的是 CDN 真实文件字节，
+        # 无需嗅探）：fnOS mediasrv 对本地 iso/BDMV 的 media/range 返回转换
+        # 后的正片 TS 流而非镜像字节（详见 sniff.py 头注），URL 以 .iso 结尾
+        # 会让 Kodi 按镜像挂载必失败（真机 "Error opening image file"）。
+        # 转换流把 URL 装饰名换成 .ts 起播（Kodi 直接 demux 正片，无菜单）；
+        # 真镜像/云盘 guid 维持 .iso 原路径。结果按 media_guid 落盘缓存。
+        url_name = file_name
+        if sniff.is_disc_image_name(file_name):
+            kind = sniff.probe(client, media_guid, log_tag='%s ' % file_name[:48])
+            if kind == sniff.KIND_TS:
+                url_name = os.path.splitext(file_name)[0] + '.ts'
+                util.log('NAS 返回转换 TS 流，按正片流起播（无菜单）: %s' % file_name)
+        url = proxy.stream_url(media_guid, url_name or None)
         if not url:
             util.notify('本地代理启动失败，无法播放', error=True)
             xbmcplugin.setResolvedUrl(handle, False, xbmcgui.ListItem(offscreen=True))
