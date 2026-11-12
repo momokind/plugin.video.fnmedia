@@ -122,6 +122,28 @@ grep FNMedia ~/.kodi/temp/kodi.log
 
 ## 版本历史
 
+- 0.7.17 外挂字幕自动加载三件套：飞牛影视对外只有两个字幕端点
+  （stream/list 的 subtitle_streams 过滤 is_external=1 即资源目录里的
+  外挂字幕轨 + /v/api/v1/subtitle/dl/{guid} 下载原始字节；"匹配资源
+  目录字幕"由服务端入库扫描完成，客户端只消费——对照
+  fntv-electron-potplayer 与 QiaoKes/fntv-electron 两社区客户端源码逐
+  行一致），插件已有下载挂载链路，本版补齐三个缺口：①首轮冷条目字
+  幕挂不上——stream/list 在后台异步抓取，setSubtitles 执行时轨列表
+  未到即本轮无字幕（第二轮缓存命中才有）；现挂字幕前对后台抓取最多
+  再等 2.5 秒（复用现有 fetch_event，超时照常起播不卡播放）。②字幕
+  轨挂上但不会自动启用——setSubtitles 只把轨放进 Kodi 字幕菜单，默
+  认显示取决于 Kodi"首选字幕语言"设置；service 的 onAVStarted 现按
+  play_info.subtitle_guid（服务端记忆的用户上次选择，跨端续看场景）
+  经 JSON-RPC Player.GetProperties/SetSubtitle 匹配启用（轨名即下载
+  文件名 safe标题@guid8.ext，按 guid8 前缀可靠匹配），无记忆退第一条
+  外挂轨；Kodi 已自行启用字幕时不打扰；启用成功把真实使用的 guid 回
+  写 pending.json，进度回传的 subtitle_guid 从"服务端旧值"变为本轮实
+  际启用的轨。③格式白名单修正——旧逻辑把名单外格式一律强改 .srt，
+  蓝光库常见的外挂 PGS（.sup）被错命名失效；现加入 sup/smi/sub，未
+  知但形似扩展名（字母数字 2-4 位）的原样保留，Kodi 按内容+扩展选渲
+  染器。媒体库 strm 播放走同一入口天然同等生效。离线冒烟 16 项全过
+  （格式判定/轨道信息/自动启用六分支：已启用不打扰、记忆轨精确启
+  用、无记忆退首条、记忆失配退首条、无外挂轨不动作、RPC 失败不崩）。
 - 0.7.16 修复"点击同步显示已排队却迟迟不动"（0.7.6 排序缺陷，真
   机日志实锤）：service 常驻循环里同步请求的消费排在整库预热
   （prewarm_one）之后，而预热一轮 20 秒只重建一个过期范围就

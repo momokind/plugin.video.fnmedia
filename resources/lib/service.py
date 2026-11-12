@@ -58,20 +58,26 @@ class FnPlayer(xbmc.Player):
             util.log('检测到飞牛影视播放开始，将跟踪进度')
 
     def onAVStarted(self):
-        """AV 管线就绪（≈首帧）时触发。
+        """AV 管线就绪（≈首帧）时触发，两件事：
 
-        蓝光 ISO（CDVDInputStreamBluray）+ setResolvedUrl 条目，Kodi 不应用
-        ListItem 的 resumePoint（从标题 0 起播）。这里在 AV 就绪后自动 seek 到
-        pending.seek_to——它来自用户在 Kodi 续播提示框/右键菜单的选择
-        （resume=true→服务端位置；false→0 不 seek；未弹框默认服务端位置），
-        省去"从 0 起播→用户手动拖进度条"的空跑。
+        ①外挂字幕自动启用（_auto_subtitle）：setSubtitles 只把轨挂进
+        Kodi 字幕菜单，默认显示与否取决于 Kodi"首选字幕语言"设置——
+        按服务端记忆的 subtitle_guid（用户在其他端选过）匹配启用，
+        无记忆退第一条外挂轨；Kodi 已自行启用字幕时不打扰。
+        ②蓝光 ISO（CDVDInputStreamBluray）+ setResolvedUrl 条目，Kodi
+        不应用 ListItem 的 resumePoint（从标题 0 起播）。AV 就绪后自动
+        seek 到 pending.seek_to——它来自用户在 Kodi 续播提示框/右键
+        菜单的选择（resume=true→服务端位置；false→0 不 seek）。
         """
-        if self._resume_seeked:
-            return
-        # pending 由主循环 5s 轮询加载，onAVStarted 触发时可能尚未就绪 → 直接读盘
         pending = self.pending or util.load_json(PENDING_FILE) or {}
         if _norm_stream_url(self._file_url()) != _norm_stream_url(pending.get('stream_url')):
             return  # 不是本插件的流
+        if pending.get('subtitle_tracks'):
+            import threading
+            threading.Thread(target=self._auto_subtitle, args=(pending,),
+                             daemon=True).start()
+        if self._resume_seeked:
+            return
         # seek_to=0（用户选了从头开始）不 seek；旧版 pending 无此字段时回退 ts0
         seek_to = int(pending.get('seek_to', pending.get('ts0', 0)) or 0)
         if seek_to < RESUME_SEEK_THRESHOLD:
@@ -80,6 +86,72 @@ class FnPlayer(xbmc.Player):
         import threading
         threading.Thread(target=self._seek_resume, args=(seek_to,),
                          daemon=True).start()
+
+    def _auto_subtitle(self, pending):
+        """起播后自动启用外挂字幕轨（onAVStarted 异步触发）。
+
+        Kodi 侧轨名即我们下载的文件名（safe标题@guid8.ext），按 guid8
+        前缀可靠匹配。已启用字幕的（Kodi 首选语言自行开了内嵌轨）不打扰；
+        匹配不到时退第一条外挂轨。成功后把真实使用的 guid 写回 pending
+        （内存 + 落盘），进度回传的 subtitle_guid 从"服务端旧值"变为
+        本轮实际启用的轨。"""
+        monitor = xbmc.Monitor()
+        monitor.waitForAbort(1.5)   # 等字幕轨注册进播放器（也避开 seek 窗口）
+        try:
+            from resources.lib import libsync
+            players = libsync._jsonrpc('Player.GetActivePlayers')
+            plist = (players or {}).get('result') or []
+            pid = plist[0].get('playerid') if plist else None
+            if pid is None:
+                return
+            props = libsync._jsonrpc('Player.GetProperties', {
+                'playerid': pid,
+                'properties': ['subtitleenabled', 'subtitles']})
+            props = (props or {}).get('result') or {}
+            if props.get('subtitleenabled'):
+                return   # Kodi 首选语言已自行启用（或用户手动开了），不打扰
+            kodi_subs = props.get('subtitles') or []
+            external = [s for s in kodi_subs if s.get('isexternal')]
+            if not external:
+                return
+            tracks = pending.get('subtitle_tracks') or []
+            remembered = pending.get('subtitle_guid') or ''
+            # 首选：服务端记忆轨（guid 全等且 guid8 能在 Kodi 轨名中找到）
+            target_guid = ''
+            target = None
+            for t in tracks:
+                g8 = (t.get('guid') or '')[:8]
+                if remembered and t.get('guid') == remembered:
+                    for s in external:
+                        if g8 and g8 in (s.get('name') or ''):
+                            target, target_guid = s, t.get('guid') or ''
+                            break
+                    if target:
+                        break
+            # 退路：第一条外挂轨（Kodi 轨名里的 guid8 反查回完整 guid）
+            if target is None:
+                target = external[0]
+                for t in tracks:
+                    if (t.get('guid') or '')[:8] in (target.get('name') or ''):
+                        target_guid = t.get('guid') or ''
+                        break
+            resp = libsync._jsonrpc('Player.SetSubtitle', {
+                'playerid': pid, 'subtitle': target.get('index'),
+                'enable': True})
+            if resp and resp.get('result') == 'OK':
+                util.log('已自动启用外挂字幕: %s' % (target.get('name') or '')[:40])
+                if target_guid:
+                    if not self.pending:
+                        self.pending = pending
+                    self.pending['subtitle_guid'] = target_guid
+                    try:
+                        merged = util.load_json(PENDING_FILE) or dict(pending)
+                        merged['subtitle_guid'] = target_guid
+                        util.save_json(PENDING_FILE, merged)
+                    except Exception:
+                        pass
+        except Exception as e:
+            util.log('自动启用字幕失败(不影响播放): %s' % e, xbmc.LOGDEBUG)
 
     def _seek_resume(self, ts0):
         """onAVStarted 时播放器刚起步，稍等再 seek 更稳；失败重试一次。

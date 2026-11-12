@@ -159,23 +159,40 @@ def _build_vfs_url(playable, file_name):
     return '%s://play/%s?d=%s' % (scheme, name, payload)
 
 
+_SUB_EXTS = ('srt', 'ass', 'ssa', 'vtt', 'sup', 'smi', 'sub')
+
+
+def _sub_ext(sub):
+    """字幕轨 format → 本地文件扩展名。
+
+    已知名单原样；未知但形似扩展名（字母数字 2-4 位）的也原样保留——
+    Kodi 按内容+扩展选渲染器，旧逻辑把名单外的一律强改 .srt，蓝光库
+    常见的外挂 PGS（.sup）会被错命名而失效；完全不像扩展名才退 srt。"""
+    fmt = str(sub.get('format') or 'srt').lower().strip().lstrip('.')
+    if fmt in _SUB_EXTS or (fmt and fmt.isalnum() and 2 <= len(fmt) <= 4):
+        return fmt
+    return 'srt'
+
+
 def _download_subtitles(client, stream_list):
-    """下载外挂字幕到本地临时目录，返回文件路径列表"""
-    paths = []
+    """下载外挂字幕到本地临时目录。
+
+    返回 [{path, guid, title, language}]——带轨道信息，供 service 起播后
+    按服务端记忆（play_info.subtitle_guid）自动启用对应轨、并把真实
+    使用的 guid 用于进度回传（此前回传的一直是服务端旧值）。"""
+    out = []
     streams = (stream_list.get('subtitle_streams') or [])
     external = [s for s in streams if _to_int(s.get('is_external')) == 1 and s.get('guid')]
     if not external:
-        return paths
+        return out
 
     tmp = util.temp_dir()
     for sub in external:
         guid = sub['guid']
-        fmt = (sub.get('format') or 'srt').lower()
-        if fmt not in ('srt', 'ass', 'ssa', 'vtt'):
-            fmt = 'srt'
+        ext = _sub_ext(sub)
         name = (sub.get('title') or guid)
         safe = ''.join(c if c.isalnum() or c in '-_' else '_' for c in name)[:60]
-        path = os.path.join(tmp, '%s@%s.%s' % (safe, guid[:8], fmt))
+        path = os.path.join(tmp, '%s@%s.%s' % (safe, guid[:8], ext))
         if not os.path.isfile(path):
             try:
                 content = client.download_subtitle(guid)
@@ -186,8 +203,10 @@ def _download_subtitles(client, stream_list):
             except Exception as e:
                 util.log('字幕下载失败 %s: %s' % (guid, e), xbmc.LOGWARNING)
                 continue
-        paths.append(path)
-    return paths
+        out.append({'path': path, 'guid': guid,
+                    'title': sub.get('title') or '',
+                    'language': sub.get('language') or ''})
+    return out
 
 
 def play(handle, params):
@@ -480,12 +499,22 @@ def play(handle, params):
     else:
         seek_to = 0           # 从头开始 / 未弹框选择
 
-    # 外挂字幕（仅 stream/list 已就绪时）
+    # 外挂字幕：stream/list 未就绪（首轮冷条目，后台抓取中）时最多再等
+    # 2.5s——字幕轨列表就在 stream/list 里，拿不到本轮就挂不上（此前
+    # 首轮播放必无字幕、第二轮缓存命中才有）。超时照常起播，不卡播放。
+    subtitle_tracks = []
     try:
-        if stream_list:
-            subtitle_paths = _download_subtitles(client, stream_list)
-            if subtitle_paths:
-                li.setSubtitles(subtitle_paths)
+        sub_list = stream_list
+        if not sub_list and fetch_event is not None:
+            fetch_event.wait(2.5)
+            sub_list = _get_cached_stream_list(guid) or {}
+        if sub_list:
+            subtitle_tracks = _download_subtitles(client, sub_list)
+            if subtitle_tracks:
+                li.setSubtitles([t['path'] for t in subtitle_tracks])
+                util.log('已挂载外挂字幕 %d 轨: %s' % (
+                    len(subtitle_tracks),
+                    '、'.join((t['title'] or t['guid'][:8])[:24] for t in subtitle_tracks[:3])))
     except Exception as e:
         util.log('字幕处理失败: %s' % e, xbmc.LOGWARNING)
 
@@ -500,6 +529,10 @@ def play(handle, params):
         'video_guid': play_info.get('video_guid', ''),
         'audio_guid': play_info.get('audio_guid', ''),
         'subtitle_guid': play_info.get('subtitle_guid', ''),
+        # 本轮挂载的外挂字幕轨（service 起播后自动启用 + 真实轨回传用）
+        'subtitle_tracks': [{'guid': t['guid'], 'title': t['title'],
+                             'language': t['language']}
+                            for t in subtitle_tracks],
         'play_link': play_link,
         'ts0': seek_to,          # 起播位置基线（从头开始=0），进度回传的兜底
         'seek_to': seek_to,      # service.onAVStarted 的自动 seek 目标（0=不 seek）
