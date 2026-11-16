@@ -130,6 +130,11 @@
                         <heading>30025</heading>
                     </control>
                 </setting>
+                <setting id="debug_log" type="boolean" label="30041" help="30042">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle" />
+                </setting>
                 <setting id="token" type="string" label="30023" help="30024">
                     <level>3</level>
                     <default />

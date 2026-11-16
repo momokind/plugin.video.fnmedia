@@ -168,3 +168,11 @@ msgstr "每 12 小时"
 msgctxt "#30040"
 msgid "Every 24 hours"
 msgstr "每 24 小时"
+
+msgctxt "#30041"
+msgid "Debug logging"
+msgstr "调试日志（排查播放问题）"
+
+msgctxt "#30042"
+msgid "Enable to raise plugin diagnostic logs to INFO level (prefixed [DBG]) in kodi.log: proxy request entry, upstream response headers, per-request transfer stats, stream link resolution and expiry decisions. Attach kodi.log when reporting playback issues. Raises log volume; keep off normally."
+msgstr "打开后插件的诊断日志以 INFO 级（[DBG] 前缀）写入 kodi.log：代理请求进入、上游响应头、每请求转发统计、换链与直链有效期判定。反馈播放问题（如断流）时请开启并附上 kodi.log。日志量会明显增多，平时请保持关闭。"

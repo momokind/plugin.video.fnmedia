@@ -23,6 +23,18 @@ def log(msg, level=xbmc.LOGINFO):
 
 
 def debug(msg):
+    """DEBUG 级日志；设置"调试日志"打开时提升为 INFO 级（带 [DBG] 前缀）。
+
+    Kodi 默认日志级别不显示 LOGDEBUG——反馈用户（播放断流等）无法收集
+    排查信息，又不宜引导每人去改 Kodi 系统设置。开关打开后插件的诊断
+    埋点（代理请求/上游响应/转发统计/换链与有效期判定）全部进
+    kodi.log 的 INFO 流，用户只需把 kodi.log 发回来。平时关闭零开销。"""
+    try:
+        if ADDON.getSetting('debug_log') == 'true':
+            log('[DBG] %s' % msg, xbmc.LOGINFO)
+            return
+    except Exception:
+        pass
     log(msg, xbmc.LOGDEBUG)
 
 

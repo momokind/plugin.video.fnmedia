@@ -168,3 +168,11 @@ msgstr "Every 12 hours"
 msgctxt "#30040"
 msgid "Every 24 hours"
 msgstr "Every 24 hours"
+
+msgctxt "#30041"
+msgid "Debug logging"
+msgstr "Debug logging"
+
+msgctxt "#30042"
+msgid "Raise plugin diagnostic logs to INFO level (prefixed [DBG]) in kodi.log: proxy request entry, upstream response headers, per-request transfer stats, stream link resolution and expiry decisions. Attach kodi.log when reporting playback issues. Raises log volume; keep off normally."
+msgstr "Raise plugin diagnostic logs to INFO level (prefixed [DBG]) in kodi.log: proxy request entry, upstream response headers, per-request transfer stats, stream link resolution and expiry decisions. Attach kodi.log when reporting playback issues. Raises log volume; keep off normally."

@@ -17,6 +17,7 @@ Range / If-Range 等头原样透传，支持 Kodi 拖动进度条。
 上游请求使用标准库 urllib（零外部依赖）。
 """
 import os
+import re
 import threading
 import time
 import urllib.error
@@ -407,6 +408,25 @@ def image_url(absolute_url):
     return 'http://127.0.0.1:%d/image?url=%s' % (port, quote(absolute_url, safe=''))
 
 
+def _declared_body_len(headers):
+    """上游响应声明的内容长度（短读检测用）。
+
+    206 取 Content-Range 区间（end-start+1），200 取 Content-Length；
+    两者皆无（chunked/未知）返回 None 表示无法校验。"""
+    if not headers:
+        return None
+    m = re.match(r'bytes\s+(\d+)-(\d+)/', headers.get('Content-Range') or '')
+    if m:
+        return int(m.group(2)) - int(m.group(1)) + 1
+    cl = headers.get('Content-Length')
+    if cl:
+        try:
+            return int(cl)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 class ProxyHandler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.0'   # 每请求一连接，按连接关闭分帧，最简单可靠
 
@@ -634,12 +654,16 @@ class ProxyHandler(BaseHTTPRequestHandler):
             util.log('HEAD 响应异常: %s' % e, xbmc.LOGWARNING)
 
     def _proxy_stream(self, media_guid, send_body, filename=''):
+        t0 = time.time()
         client = get_client()
         if client is None:
             util.log('代理无可用客户端，/stream 500（设置未配置或构建失败）',
                      xbmc.LOGWARNING)
             self._send_upstream_error(500, 'client not ready')
             return
+        util.debug('代理请求: %s media=%s Range=%s' % (
+            'HEAD' if not send_body else 'GET', media_guid[:16],
+            self.headers.get('Range') or '-'))
 
         # 注意：上游一律用 GET——真机验证 NAS 的 media/range 不支持 HEAD（返回 404），
         # 而 Kodi 会先发 HEAD 探测。HEAD 请求转发为 GET，取到响应头后丢弃响应体。
@@ -764,19 +788,64 @@ class ProxyHandler(BaseHTTPRequestHandler):
             if not send_body:
                 return  # HEAD：只要响应头，响应体由 close 丢弃（drained=False→连接丢弃）
 
+            declared = _declared_body_len(resp.headers)
+            util.debug('上游响应: %s 状态 %d 声明 %s 字节 media=%s (%.1fs)' % (
+                self._upstream_host(resp, fetch_url), status, declared,
+                media_guid[:16], time.time() - t0))
             sent = 0
+            client_gone = False
             while True:
-                chunk = resp.read(CHUNK_SIZE)
+                try:
+                    chunk = resp.read(CHUNK_SIZE)
+                except (BrokenPipeError, ConnectionResetError) as e:
+                    # 上游中断 ≠ 客户端断开：旧码同一个 except 把两者混为一
+                    # 谈静默吞掉，上游抽风零日志（0.7.18 修复）
+                    util.log('上游读取中断: %s（media=%s, 已转发 %d/%s 字节）' % (
+                        e, media_guid[:16], sent, declared or '?'), xbmc.LOGWARNING)
+                    break
+                except Exception as e:
+                    util.log('上游读取异常: %s（media=%s, 已转发 %d 字节）' % (
+                        e, media_guid[:16], sent), xbmc.LOGWARNING)
+                    break
                 if not chunk:
                     drained = True
                     break
-                self.wfile.write(chunk)
+                try:
+                    self.wfile.write(chunk)
+                except (BrokenPipeError, ConnectionResetError):
+                    client_gone = True   # 播放器断开（seek/停止），安静收尾
+                    break
                 sent += len(chunk)
-            if sent == 0:
+            if sent == 0 and not client_gone:
                 # 200 却 0 字节：上游/中转抽风的典型形态（真机坑⑮），必须留痕
                 util.log('上游 %s 返回 %d 但响应体 0 字节（media=%s）' % (
                     self._upstream_host(resp, fetch_url), status, media_guid[:16]),
                     xbmc.LOGWARNING)
+            elif drained and declared is not None and sent < declared:
+                # 短读：上游声明 declared 却只送 sent 就 EOF——Python 带参
+                # read(amt) 提前 EOF 刻意不抛 IncompleteRead（3.11.9 源注），
+                # 旧码把空读当"读完"（drained=True）照常收尾，播放器收到
+                # 截断流（curl 18）而日志零告警。0.7.18 先做可观测（真实
+                # 短读日志积累后再决定是否按原起点+已转发字节续传）；
+                # drained 复位 False：上游异常收尾的连接不放回池里复用
+                util.log('上游短读: 声明 %d 实收 %d 字节（media=%s, Range=%s, host=%s）'
+                         % (declared, sent, media_guid[:16],
+                            self.headers.get('Range') or '-',
+                            self._upstream_host(resp, fetch_url)), xbmc.LOGWARNING)
+                drained = False
+            # 每请求一条转发统计（[DBG]）：正常完成/客户端断开/上游中断/
+            # 短读 四种结局一目了然——断流排查时与上两条埋点串起完整链路
+            if client_gone:
+                outcome = '客户端断开'
+            elif not drained:
+                outcome = '上游中断/短读'
+            elif sent == 0:
+                outcome = '零字节'
+            else:
+                outcome = '完成'
+            util.debug('转发结束: %s %d/%s 字节 (%.1fs, media=%s, Range=%s)' % (
+                outcome, sent, declared or '?', time.time() - t0,
+                media_guid[:16], self.headers.get('Range') or '-'))
         except (BrokenPipeError, ConnectionResetError):
             pass  # 客户端断开（seek/停止）
         except Exception as e:

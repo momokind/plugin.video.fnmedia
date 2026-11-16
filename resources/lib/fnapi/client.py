@@ -71,6 +71,31 @@ def _origin(url):
     return '%s://%s' % (parsed.scheme, parsed.netloc)
 
 
+def _norm_expired_at(raw, now=None):
+    """expired_at 归一化为绝对 Unix 秒。
+
+    服务端语义存在版本差异（0.7.18 依据外部隔离复现报告修复）：fnOS
+    某版对直链返回相对秒（如 7201≈2h TTL），旧逻辑"<1e12 当绝对秒"把它
+    当成 1970 年的时间戳——缓存即刻失效（每次播放重新换链）、直连门控
+    永远拒绝（日志"剩余有效期 -29912526 分钟"即由此而来，六条日志逆推
+    出原始值 7200~7208）。判别阈值安全：当代绝对秒时间戳 ~1.79e9，
+    1e9（2001-09-09）以下不可能是绝对时间只能是相对秒；1e12 以上是
+    毫秒。相对秒只在首次收到响应时归一化一次（调用方须把结果随数据
+    落缓存，后续读取用存储值——每次读取对着原始相对值重加当前时间
+    会把过期时间不断后延）。"""
+    try:
+        v = float(raw or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    if v <= 0:
+        return 0.0
+    if v >= 1e12:
+        return v / 1000.0
+    if v < 1e9:
+        return (now if now is not None else time.time()) + v
+    return v
+
+
 class FnClient(object):
     """飞牛影视 API 客户端（带登录态管理与流信息缓存）"""
 
@@ -478,6 +503,8 @@ class FnClient(object):
         """
         if not user_agent:
             user_agent = _default_stream_ua()
+        util.debug('换链请求: POST /stream media=%s ua=%s' % (
+            media_guid[:16], (user_agent or '')[:32]))
         return self.call('post', '/v/api/v1/stream', {
             'header': {'User-Agent': [user_agent]},
             'level': 1,
@@ -526,12 +553,17 @@ class FnClient(object):
 
             expiries = []
             for quality in (data.get('direct_link_qualities') or []):
-                expired_at = quality.get('expired_at') or 0
-                if expired_at > 1e12:      # 毫秒时间戳
-                    expired_at /= 1000.0
+                expired_at = _norm_expired_at(quality.get('expired_at'), now)
                 if expired_at > 0:
                     expiries.append(expired_at)
-            expire = (min(expiries) - 60) if expiries else (time.time() + STREAM_CACHE_TTL)
+            expire = (min(expiries) - 60) if expiries else (now + STREAM_CACHE_TTL)
+            # 归一化后的绝对到期时刻随数据一起存（内存+磁盘共用同一 dict）：
+            # 后续门控一律读该值，绝不对着原始相对秒重新加当前时间
+            data['_expire_ts'] = expire
+            util.debug('换链完成: media=%s 到期 %s 剩余 %.0f 分钟' % (
+                media_guid[:16],
+                time.strftime('%m-%d %H:%M', time.localtime(expire)),
+                max(expire - now, 0) / 60))
 
             self._stream_cache[(media_guid, ua)] = (data, expire)
 
@@ -656,15 +688,21 @@ class FnClient(object):
         if not direct or not direct[0].get('url'):
             return None    # NAS 本地文件等无直链 → 走代理
 
-        # 有效期门控
-        expiries = []
-        for quality in direct:
-            expired_at = quality.get('expired_at') or 0
-            if expired_at > 1e12:       # 毫秒时间戳
-                expired_at /= 1000.0
-            if expired_at > 0:
-                expiries.append(expired_at)
-        expire = min(expiries) if expiries else 0
+        # 有效期门控：优先 stream_cached 归一化并存入数据的 _expire_ts
+        # （相对秒语义下对着原始值每次重算会把过期时间不断后延——0.7.18
+        # 修复，正是"-29912526 分钟"误拒直连的根因）；无该键的旧缓存退回
+        # 现场归一化（绝对语义正确；相对语义的旧缓存 expire 本就是 1970，
+        # 早已触发重取，不会长期驻留）
+        expire = data.get('_expire_ts') or 0
+        if not expire:
+            expiries = []
+            for quality in direct:
+                ts = _norm_expired_at(quality.get('expired_at'), now)
+                if ts > 0:
+                    expiries.append(ts)
+            expire = min(expiries) if expiries else 0
+        util.debug('直连门控: media=%s 剩余 %.0f 分钟（门槛 %d 分钟）' % (
+            media_guid[:16], max(expire - now, 0) / 60, min_valid_secs / 60))
         if min_valid_secs > 0 and expire and expire - now < min_valid_secs:
             util.log('直链剩余有效期 %d 分钟不足 %d 分钟，放弃直连走代理（115 限速期链接'
                      '有效期变短时会集中出现）' % ((expire - now) / 60, min_valid_secs / 60),
